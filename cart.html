@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shopping Cart – Trendora</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+  <div class="announcement-bar">Free Shipping on Selected Products</div>
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="index.html" class="logo">Trend<span>ora</span></a>
+      <div class="nav-icons">
+        <a href="cart.html"><i class="fas fa-shopping-bag"></i><span class="cart-count">0</span></a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="section">
+    <h1 class="section-title">Your Cart</h1>
+    <div id="cart-items"></div>
+    <div id="cart-summary" style="margin-top:40px; max-width:400px; margin-left:auto; padding:24px; background:#f8f8f8; border-radius:12px;"></div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    function renderCart() {
+      const cart = getCart();
+      const products = getProducts();
+      const container = document.getElementById('cart-items');
+      const summary = document.getElementById('cart-summary');
+
+      if (cart.length === 0) {
+        container.innerHTML = '<p style="text-align:center; padding:60px;">Your cart is empty. <a href="index.html" style="color:#ff6b00;">Continue Shopping</a></p>';
+        summary.innerHTML = '';
+        return;
+      }
+
+      let total = 0;
+      container.innerHTML = cart.map(item => {
+        const p = products.find(x => x.id === item.id) || item;
+        const lineTotal = p.price * item.qty;
+        total += lineTotal;
+        return `
+          <div style="display:flex; gap:20px; padding:20px 0; border-bottom:1px solid #eee; align-items:center;">
+            <img src="${item.image}" style="width:100px; height:100px; object-fit:contain; background:#fafafa; border-radius:8px;">
+            <div style="flex:1;">
+              <h3>${item.name}</h3>
+              <p>${formatPrice(p.price)} × ${item.qty}</p>
+              <div style="margin-top:8px;">
+                <button onclick="changeQty('${item.id}', -1)" style="padding:4px 10px;">−</button>
+                <span style="margin:0 10px;">${item.qty}</span>
+                <button onclick="changeQty('${item.id}', 1)" style="padding:4px 10px;">+</button>
+                <button onclick="removeItem('${item.id}')" style="margin-left:16px; color:#dc2626; background:none; border:none; cursor:pointer;">Remove</button>
+              </div>
+            </div>
+            <div style="font-weight:600;">${formatPrice(lineTotal)}</div>
+          </div>
+        `;
+      }).join('');
+
+      summary.innerHTML = `
+        <h3>Order Summary</h3>
+        <p style="margin:12px 0; font-size:18px;"><strong>Total: ${formatPrice(total)}</strong></p>
+        <a href="checkout.html" class="btn-primary" style="width:100%; text-align:center; display:block;">Proceed to Checkout</a>
+        <button class="btn-secondary" style="width:100%; margin-top:12px;" onclick="orderViaWhatsApp()">Order via WhatsApp</button>
+      `;
+    }
+
+    function changeQty(id, delta) {
+      let cart = getCart();
+      const item = cart.find(i => i.id === id);
+      if (item) {
+        item.qty += delta;
+        if (item.qty <= 0) cart = cart.filter(i => i.id !== id);
+        saveCart(cart);
+        renderCart();
+      }
+    }
+
+    function removeItem(id) {
+      let cart = getCart().filter(i => i.id !== id);
+      saveCart(cart);
+      renderCart();
+    }
+
+    document.addEventListener('DOMContentLoaded', renderCart);
+  </script>
+</body>
+</html>

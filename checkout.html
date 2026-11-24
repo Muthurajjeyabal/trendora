@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout – Trendora</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+  <div class="announcement-bar">Secure Checkout</div>
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="index.html" class="logo">Trend<span>ora</span></a>
+    </div>
+  </nav>
+
+  <div class="section" style="max-width:900px;">
+    <h1 class="section-title">Checkout</h1>
+    <div style="display:grid; grid-template-columns:1.2fr 0.8fr; gap:40px; margin-top:30px;">
+      <form id="checkout-form" onsubmit="placeOrder(event)">
+        <h3 style="margin-bottom:16px;">Delivery Details</h3>
+        <input required placeholder="Full Name" id="name" style="width:100%; padding:12px; margin-bottom:12px; border:1px solid #ddd; border-radius:8px;">
+        <input required type="tel" placeholder="Mobile Number" id="mobile" style="width:100%; padding:12px; margin-bottom:12px; border:1px solid #ddd; border-radius:8px;">
+        <input required type="email" placeholder="Email" id="email" style="width:100%; padding:12px; margin-bottom:12px; border:1px solid #ddd; border-radius:8px;">
+        <textarea required placeholder="Full Delivery Address" id="address" rows="3" style="width:100%; padding:12px; margin-bottom:12px; border:1px solid #ddd; border-radius:8px;"></textarea>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+          <input required placeholder="City" id="city" style="padding:12px; border:1px solid #ddd; border-radius:8px;">
+          <input required placeholder="State" id="state" style="padding:12px; border:1px solid #ddd; border-radius:8px;">
+          <input required placeholder="PIN Code" id="pin" style="padding:12px; border:1px solid #ddd; border-radius:8px;">
+        </div>
+        <h3 style="margin:24px 0 12px;">Payment Method</h3>
+        <label style="display:block; margin-bottom:8px;"><input type="radio" name="payment" value="COD" checked> Cash on Delivery</label>
+        <label style="display:block; margin-bottom:20px;"><input type="radio" name="payment" value="WhatsApp"> Order via WhatsApp</label>
+        <button type="submit" class="btn-primary" style="width:100%;">Place Order</button>
+      </form>
+      <div id="order-summary" style="background:#f8f8f8; padding:24px; border-radius:12px; height:fit-content;"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    function renderSummary() {
+      const cart = getCart();
+      const products = getProducts();
+      let total = 0;
+      const html = cart.map(item => {
+        const p = products.find(x => x.id === item.id) || item;
+        const line = p.price * item.qty;
+        total += line;
+        return `<div style="display:flex; justify-content:space-between; margin-bottom:8px;"><span>${item.name} × ${item.qty}</span><span>${formatPrice(line)}</span></div>`;
+      }).join('');
+      document.getElementById('order-summary').innerHTML = `
+        <h3>Order Summary</h3>
+        ${html}
+        <hr style="margin:12px 0;">
+        <div style="display:flex; justify-content:space-between; font-weight:700; font-size:18px;"><span>Total</span><span>${formatPrice(total)}</span></div>
+      `;
+    }
+
+    function placeOrder(e) {
+      e.preventDefault();
+      const cart = getCart();
+      if (!cart.length) return alert('Cart is empty');
+
+      const order = {
+        id: 'ORD' + Date.now(),
+        customer: {
+          name: document.getElementById('name').value,
+          mobile: document.getElementById('mobile').value,
+          email: document.getElementById('email').value,
+          address: document.getElementById('address').value,
+          city: document.getElementById('city').value,
+          state: document.getElementById('state').value,
+          pin: document.getElementById('pin').value
+        },
+        items: cart,
+        payment: document.querySelector('input[name="payment"]:checked').value,
+        status: 'Pending',
+        date: new Date().toISOString(),
+        total: cart.reduce((sum, item) => {
+          const p = getProducts().find(x => x.id === item.id);
+          return sum + (p ? p.price * item.qty : 0);
+        }, 0)
+      };
+
+      const orders = JSON.parse(localStorage.getItem(STORAGE_KEYS.orders) || '[]');
+      orders.push(order);
+      localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(orders));
+      saveCart([]);
+
+      if (order.payment === 'WhatsApp') {
+        orderViaWhatsApp();
+      }
+      alert('Order placed successfully! Order ID: ' + order.id);
+      location.href = 'index.html';
+    }
+
+    document.addEventListener('DOMContentLoaded', renderSummary);
+  </script>
+</body>
+</html>

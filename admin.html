@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel – Trendora</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .admin-container { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+    .tabs { display: flex; gap: 12px; margin-bottom: 24px; }
+    .tab { padding: 10px 20px; background: #f0f0f0; border-radius: 8px; cursor: pointer; }
+    .tab.active { background: #111; color: white; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  </style>
+</head>
+<body>
+  <div class="announcement-bar">Admin Panel</div>
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="index.html" class="logo">Trend<span>ora</span> Admin</a>
+      <a href="index.html">View Store</a>
+    </div>
+  </nav>
+
+  <div class="admin-container">
+    <div id="login-section">
+      <h2>Admin Login</h2>
+      <p style="margin:10px 0 20px; color:#666;">Demo password: <strong>admin123</strong></p>
+      <input type="password" id="admin-pass" placeholder="Password" style="padding:12px; width:280px; border:1px solid #ddd; border-radius:8px;">
+      <button class="btn-primary" onclick="login()" style="margin-left:8px;">Login</button>
+    </div>
+
+    <div id="admin-panel" style="display:none;">
+      <div class="tabs">
+        <div class="tab active" onclick="showTab('products')">Products</div>
+        <div class="tab" onclick="showTab('orders')">Orders</div>
+      </div>
+
+      <div id="products-tab">
+        <h2>Manage Products</h2>
+        <button class="btn-primary" onclick="showAddForm()" style="margin:16px 0;">Add New Product</button>
+        <div id="add-form" style="display:none; background:#f8f8f8; padding:20px; border-radius:12px; margin-bottom:20px;">
+          <h3>Add / Edit Product</h3>
+          <div class="form-grid">
+            <input id="p-name" placeholder="Product Name">
+            <input id="p-category" placeholder="Category">
+            <input id="p-original" type="number" placeholder="Original Price">
+            <input id="p-price" type="number" placeholder="Discounted Price">
+            <input id="p-stock" type="number" placeholder="Stock">
+            <input id="p-image" placeholder="Image path (e.g. imagine_images/xxx.jpg)">
+          </div>
+          <textarea id="p-desc" placeholder="Description" style="width:100%; margin:12px 0; padding:10px; border:1px solid #ddd; border-radius:8px;"></textarea>
+          <button class="btn-primary" onclick="saveProduct()">Save Product</button>
+          <button class="btn-secondary" onclick="document.getElementById('add-form').style.display='none'">Cancel</button>
+        </div>
+        <div id="products-list"></div>
+      </div>
+
+      <div id="orders-tab" style="display:none;">
+        <h2>Customer Orders</h2>
+        <div id="orders-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    const ADMIN_PASS = 'admin123';
+    let editingId = null;
+
+    function login() {
+      if (document.getElementById('admin-pass').value === ADMIN_PASS) {
+        localStorage.setItem(STORAGE_KEYS.admin, 'true');
+        document.getElementById('login-section').style.display = 'none';
+        document.getElementById('admin-panel').style.display = 'block';
+        renderProductsAdmin();
+        renderOrders();
+      } else alert('Wrong password');
+    }
+
+    function showTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById('products-tab').style.display = tab === 'products' ? 'block' : 'none';
+      document.getElementById('orders-tab').style.display = tab === 'orders' ? 'block' : 'none';
+    }
+
+    function renderProductsAdmin() {
+      const products = getProducts();
+      document.getElementById('products-list').innerHTML = `
+        <table>
+          <tr><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Actions</th></tr>
+          ${products.map(p => `
+            <tr>
+              <td>${p.name}</td>
+              <td>${p.category}</td>
+              <td>${formatPrice(p.price)}</td>
+              <td>${p.stock}</td>
+              <td>
+                <button onclick="editProduct('${p.id}')">Edit</button>
+                <button onclick="deleteProduct('${p.id}')" style="color:red;">Delete</button>
+              </td>
+            </tr>
+          `).join('')}
+        </table>
+      `;
+    }
+
+    function showAddForm() {
+      editingId = null;
+      document.getElementById('add-form').style.display = 'block';
+      document.getElementById('p-name').value = '';
+      document.getElementById('p-category').value = '';
+      document.getElementById('p-original').value = '';
+      document.getElementById('p-price').value = '';
+      document.getElementById('p-stock').value = '';
+      document.getElementById('p-image').value = '';
+      document.getElementById('p-desc').value = '';
+    }
+
+    function editProduct(id) {
+      const p = getProducts().find(x => x.id === id);
+      if (!p) return;
+      editingId = id;
+      document.getElementById('add-form').style.display = 'block';
+      document.getElementById('p-name').value = p.name;
+      document.getElementById('p-category').value = p.category;
+      document.getElementById('p-original').value = p.originalPrice;
+      document.getElementById('p-price').value = p.price;
+      document.getElementById('p-stock').value = p.stock;
+      document.getElementById('p-image').value = p.image;
+      document.getElementById('p-desc').value = p.description;
+    }
+
+    function saveProduct() {
+      const products = getProducts();
+      const data = {
+        name: document.getElementById('p-name').value,
+        category: document.getElementById('p-category').value,
+        originalPrice: +document.getElementById('p-original').value,
+        price: +document.getElementById('p-price').value,
+        stock: +document.getElementById('p-stock').value,
+        image: document.getElementById('p-image').value || 'imagine_images/CVc8i.jpg',
+        description: document.getElementById('p-desc').value,
+        discount: Math.round((1 - (+document.getElementById('p-price').value / +document.getElementById('p-original').value)) * 100),
+        features: ['Premium Quality', 'Fast Delivery'],
+        trending: true,
+        bestseller: false
+      };
+      if (editingId) {
+        const idx = products.findIndex(p => p.id === editingId);
+        products[idx] = { ...products[idx], ...data };
+      } else {
+        data.id = 'p' + Date.now();
+        products.push(data);
+      }
+      localStorage.setItem(STORAGE_KEYS.products, JSON.stringify(products));
+      document.getElementById('add-form').style.display = 'none';
+      renderProductsAdmin();
+      alert('Product saved');
+    }
+
+    function deleteProduct(id) {
+      if (!confirm('Delete this product?')) return;
+      const products = getProducts().filter(p => p.id !== id);
+      localStorage.setItem(STORAGE_KEYS.products, JSON.stringify(products));
+      renderProductsAdmin();
+    }
+
+    function renderOrders() {
+      const orders = JSON.parse(localStorage.getItem(STORAGE_KEYS.orders) || '[]');
+      document.getElementById('orders-list').innerHTML = orders.length ? `
+        <table>
+          <tr><th>Order ID</th><th>Customer</th><th>Total</th><th>Payment</th><th>Status</th><th>Action</th></tr>
+          ${orders.map(o => `
+            <tr>
+              <td>${o.id}</td>
+              <td>${o.customer.name}<br><small>${o.customer.mobile}</small></td>
+              <td>${formatPrice(o.total)}</td>
+              <td>${o.payment}</td>
+              <td>${o.status}</td>
+              <td><button onclick="updateStatus('${o.id}')">Update Status</button></td>
+            </tr>
+          `).join('')}
+        </table>
+      ` : '<p>No orders yet.</p>';
+    }
+
+    function updateStatus(id) {
+      const orders = JSON.parse(localStorage.getItem(STORAGE_KEYS.orders) || '[]');
+      const order = orders.find(o => o.id === id);
+      if (order) {
+        const statuses = ['Pending', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled'];
+        const next = statuses[(statuses.indexOf(order.status) + 1) % statuses.length];
+        order.status = next;
+        localStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(orders));
+        renderOrders();
+      }
+    }
+
+    if (localStorage.getItem(STORAGE_KEYS.admin) === 'true') {
+      document.getElementById('login-section').style.display = 'none';
+      document.getElementById('admin-panel').style.display = 'block';
+      renderProductsAdmin();
+      renderOrders();
+    }
+  </script>
+</body>
+</html>
